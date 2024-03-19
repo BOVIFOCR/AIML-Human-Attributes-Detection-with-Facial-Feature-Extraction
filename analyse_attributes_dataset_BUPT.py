@@ -299,6 +299,7 @@ def save_samples_one_pair(pair, path_save_sample):
 
 """ Function for gender detection,age detection and """            
 def main(args):
+    output_path = os.path.join(os.path.dirname(__file__), 'results', 'analysis_dataset_bupt')
 
     all_pairs, race_count, subject_count, sample_count = count_verification_protocol_stats(args.protocol)
     # print("Number of pairs by race:")
@@ -434,7 +435,7 @@ def main(args):
                     print('    --')
             
                 if args.save_pair_imgs:
-                    dir_save_samples = './imgs_pairs_dataset_bupt'
+                    dir_save_samples = os.path.join(output_path, 'imgs_pairs_dataset_bupt')
                     os.makedirs(dir_save_samples, exist_ok=True)
                     pair_img_filename = 'pair_'+str(pair_idx).zfill(4)+'.png'
                     path_save_sample = os.path.join(dir_save_samples, pair_img_filename)
@@ -452,7 +453,7 @@ def main(args):
                 print('-------------------------')
                 # sys.exit(0)
 
-        path_file_attributes = 'attributes_dataset_bupt.pkl'
+        path_file_attributes = os.path.join(output_path, 'attributes_dataset_bupt.pkl')
         print(f'Saving attributes to file \'{path_file_attributes}\'')
         save_attributes(all_pairs, path_file_attributes)
 
@@ -470,7 +471,7 @@ def main(args):
     race_facial_attributes_count = count_facial_attributes_by_race(all_pairs)
     # print('race_facial_attributes_count:', race_facial_attributes_count)
 
-    path_facial_attributes_chart_file = 'race_face_attributes_count.png'
+    path_facial_attributes_chart_file = os.path.join(output_path, 'race_face_attributes_count.png')
     print(f'Saving chart \'{path_facial_attributes_chart_file}\'')
     save_bar_subplots(race_facial_attributes_count, path_facial_attributes_chart_file)
 
@@ -485,12 +486,13 @@ def main(args):
 
     # bins, ylim = 10, (0,4000)
     # bins, ylim = 20, (0,4000)
+    # bins, ylim = 50, (0,1)
     # bins, ylim = 50, (0,5)
     bins, ylim = 50, (0,2500)
     # bins, ylim = 50, (0,4000)
     # bins, ylim = 100, (0,5)
     # bins, ylim = 100, (0,4000)
-    path_face_pose_chart_file = f'race_face_pose_count_bins={bins}_ylim='+str(ylim).replace(' ','')+'.png'
+    path_face_pose_chart_file = os.path.join(output_path, f'race_face_pose_count_bins={bins}_ylim='+str(ylim).replace(' ','')+'.png')
     print(f'Saving chart \'{path_face_pose_chart_file}\'')
     plot_face_pose_histograms(race_face_pose_count, bins, ylim, path_face_pose_chart_file)
 
