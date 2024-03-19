@@ -238,6 +238,53 @@ def count_face_pose_by_race(data):
     return merged_data
 
 
+def count_gender_age_by_race(face_verification_list):
+    gender_age_by_race = {
+        'African': {'Male': [], 'Female': []},
+        'Asian': {'Male': [], 'Female': []},
+        'Caucasian': {'Male': [], 'Female': []},
+        'Indian': {'Male': [], 'Female': []}
+    }
+
+    for verification_pair in face_verification_list:
+        race = verification_pair['race']
+        sample0_gender = verification_pair['sample0']['gender']
+        sample0_age = verification_pair['sample0']['age']
+        sample1_gender = verification_pair['sample1']['gender']
+        sample1_age = verification_pair['sample1']['age']
+
+        gender_age_by_race[race][sample0_gender].append(sample0_age)
+        gender_age_by_race[race][sample1_gender].append(sample1_age)
+
+    return gender_age_by_race
+
+
+def plot_gender_age_histograms(gender_age_by_race, output_file):
+    races = list(gender_age_by_race.keys())
+    genders = ['Male', 'Female']
+    ages = ['(0-2)', '(4-6)', '(8-12)', '(15-20)', '(25-32)', '(38-43)', '(48-53)', '(60-100)']
+
+    fig, axs = plt.subplots(len(races), 2, figsize=(12, 9), sharey='row')
+    fig.suptitle('Gender and Age Histograms by Race')
+
+    for i, race in enumerate(races):
+        for j, gender in enumerate(genders):
+            num_samples = len(gender_age_by_race[race][gender])
+            age_counts = [gender_age_by_race[race][gender].count(age) for age in ages]
+            x = np.arange(len(ages))
+            axs[i,j].bar(x, age_counts, color=['blue', 'orange', 'green', 'red', 'purple', 'brown', 'pink', 'gray'])
+            axs[i,j].set_ylim(bottom=0, top=1500)
+            axs[i,j].set_title(f'{race} - {gender} - #Samples={num_samples}')
+            axs[i,j].set_xticks(x)
+            axs[i,j].set_xticklabels(ages, rotation=45)
+            axs[i,j].set_xlabel('Age')
+            axs[i,j].set_ylabel('Count')
+
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig(output_file)
+    plt.close()
+
+
 def save_bar_subplots(race_attributes_count, output_file):
     races = list(race_attributes_count.keys())
     attributes = list(race_attributes_count[races[0]].keys())
@@ -477,6 +524,14 @@ def main(args):
 
 
     #############################
+    gender_age_count = count_gender_age_by_race(all_pairs)
+    # print('gender_age_count:', gender_age_count)
+    path_face_gender_age_chart_file = os.path.join(output_path, f'gender_age_count.png')
+    print(f'Saving chart \'{path_face_gender_age_chart_file}\'')
+    plot_gender_age_histograms(gender_age_count, path_face_gender_age_chart_file)
+
+
+    #############################
     print('Counting face poses')
     race_face_pose_count = count_face_pose_by_race(all_pairs)
     # print('race_face_pose_count:', race_face_pose_count)
@@ -495,6 +550,7 @@ def main(args):
     path_face_pose_chart_file = os.path.join(output_path, f'race_face_pose_count_bins={bins}_ylim='+str(ylim).replace(' ','')+'.png')
     print(f'Saving chart \'{path_face_pose_chart_file}\'')
     plot_face_pose_histograms(race_face_pose_count, bins, ylim, path_face_pose_chart_file)
+    
 
     print('Finished!\n')
 
