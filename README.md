@@ -37,6 +37,7 @@ cd AIML-Human-Attributes-Detection-with-Facial-Feature-Extraction
 
 ENV=AIML-Human-Attributes-Detection-with-Facial-Feature-Extraction
 conda create -y --name $ENV python=3.6
+conda activate $ENV
 pip3 install -r requirements.txt
 ```
 
