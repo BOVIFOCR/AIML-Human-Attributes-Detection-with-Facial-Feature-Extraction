@@ -31,6 +31,15 @@ Deep Learning Models used for the library are,
 
 ## Getting started
 
+```
+git clone https://github.com/BOVIFOCR/AIML-Human-Attributes-Detection-with-Facial-Feature-Extraction.git
+cd AIML-Human-Attributes-Detection-with-Facial-Feature-Extraction
+
+ENV=AIML-Human-Attributes-Detection-with-Facial-Feature-Extraction
+conda create -y --name $ENV python=3.6
+pip3 install -r requirements.txt
+```
+
 Prerequisites for running the code are:
 
 - Python == 3.6
