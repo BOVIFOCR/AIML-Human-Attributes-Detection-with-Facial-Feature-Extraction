@@ -300,7 +300,9 @@ def main(args):
 
         spent_time = time.time() - start_time
         print('    Spent time: %.2fsec' % (spent_time))
-        est_time_sec = spent_time*(total_num-i)
+        remaining = total_num-i
+        print('    Remaining:', remaining)
+        est_time_sec = spent_time*remaining
         est_time_min = est_time_sec / 60
         est_time_hour = est_time_min / 60
         est_time_days = est_time_hour / 24
