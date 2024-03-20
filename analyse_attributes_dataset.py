@@ -232,14 +232,14 @@ def main(args):
         # create a list based on the attributes generated.
         attrDict = {}
         detectedAttributeList = []
-        for i in range(40):
+        for j in range(40):
             # attr = text[i].rjust(20)
-            attr = text[i]
-            if output[0][i] < 0:
+            attr = text[j]
+            if output[0][j] < 0:
                 attrDict[attr] = 'No'
             else:
                 attrDict[attr] = 'Yes'
-                detectedAttributeList.append(text[i])
+                detectedAttributeList.append(text[j])
 
         # print("#====Detected Attributes========#")
         face_attrib['attrDict'] = attrDict
