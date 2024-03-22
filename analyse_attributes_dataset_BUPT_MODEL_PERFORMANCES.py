@@ -104,6 +104,7 @@ def genderAge(image, faceBox=None):
 
 def count_verification_protocol_stats(file_path):
     all_pairs = []
+    true_labels = []
     race_count = {}
     subject_count = {}
     sample_count = {}
@@ -116,6 +117,11 @@ def count_verification_protocol_stats(file_path):
             paths_pair = line.split(';')
             pair_dict = {}
             pair_dict['race'] = paths_pair[0].split('/')[0]
+
+            subj0 = paths_pair[0].split('/')[-2]
+            subj1 = paths_pair[1].split('/')[-2]
+            pair_dict['label'] = 1 if subj0 == subj1 else 0
+            true_labels.append(pair_dict['label'])
 
             sample_dict0 = {}
             sample_dict0['path'] = paths_pair[0]
@@ -144,7 +150,7 @@ def count_verification_protocol_stats(file_path):
                     sample_count[sample] = 1
         print('')
 
-    return all_pairs, race_count, subject_count, sample_count
+    return all_pairs, true_labels, race_count, subject_count, sample_count
 
 
 def adjust_paths(all_pairs, img_path, ext='.png'):
@@ -174,6 +180,17 @@ def save_attributes(data, file_path):
 def load_attributes(file_path):
     with open(file_path, 'rb') as file:
         return pickle.load(file)
+
+
+def load_predict_scores_labels(file_path):
+    scores = []
+    labels = []
+    with open(file_path, 'r') as file:
+        for line in file:
+            score, label = line.strip().split(',')
+            scores.append(float(score))
+            labels.append(int(label))
+    return scores, labels
 
 
 def count_facial_attributes_by_race(facial_attributes_list):
@@ -287,11 +304,15 @@ def plot_gender_age_histograms(gender_age_by_race, output_file):
 
 def save_bar_subplots(race_attributes_count, output_file):
     races = list(race_attributes_count.keys())
-    attributes = list(race_attributes_count[races[0]].keys())
+    # attributes = list(race_attributes_count[races[0]].keys())
 
     fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(12, 20))
 
     for i, race in enumerate(races):
+        # print(f'save_bar_subplots: {i}')
+        # print(f'attributes: {attributes}')
+        # print(f'race_attributes_count[{race}]: {race_attributes_count[race]}')
+        attributes = list(race_attributes_count[race].keys())
         counts = [race_attributes_count[race][attr] for attr in attributes]
         ax = axes[i]
         ax.bar(np.arange(len(attributes)), counts)
@@ -375,178 +396,39 @@ def save_samples_one_pair(pair, path_save_sample):
     plt.close()
 
 
-""" Function for gender detection,age detection and """            
-def main(args):
-    output_path = os.path.join(os.path.dirname(__file__), 'results', 'analysis_dataset_bupt')
-
-    all_pairs, race_count, subject_count, sample_count = count_verification_protocol_stats(args.protocol)
-    # print("Number of pairs by race:")
-    # for race, count in race_count.items():
-    #     print(f"{race}: {count}")
-    # sys.exit(0)
-
-    all_pairs = adjust_paths(all_pairs, args.img_path, '.png')
-
-    # args.start_idx_pair = int(max(args.start_idx_pair, 0))
-    # args.start_idx_pair = int(min(args.start_idx_pair, len(all_pairs)-1))
-    # all_pairs = all_pairs[args.start_idx_pair:]
-
-    if args.load_attributes == '':
-        symbol = lightened_moon_feature(num_classes=40, use_fuse=True)
-        devs = mx.cpu() if args.gpus is None else [mx.gpu(int(i)) for i in args.gpus.split(',')]
-        _, arg_params, aux_params = mx.model.load_checkpoint('model/lightened_moon/lightened_moon_fuse', 82)
-
-        print('\n-------------------------')
-        for pair_idx, pair in enumerate(all_pairs):
-            if pair_idx >= args.start_idx_pair:
-                start_time = time.time()
-                # path1, path2 = pair['paths']
-                race_pair = pair['race']
-                print(f'pair {pair_idx}/{len(all_pairs)}')
-                print(f'race_pair: {race_pair}')
-                print('pair:', pair)
-                for sample_idx in range(2):
-                # for j, path in enumerate(pair['paths']):
-                    sample_key = 'sample'+str(sample_idx)
-                    sample = pair[sample_key]
-                    path = sample['path']
-                    print(f'    {sample_key}: {path}')
-                    
-                    image = cv2.imread(path)
-                    img = cv2.imread(path, -1)
-                    sample['image'] = image
-
-                    # print("#====Detected Age and Gender====#")
-                    # gender, age = genderAge(image, faceBox)
-                    gender, age = genderAge(image)
-                    sample['gender'] = gender
-                    sample['age'] = age
-                    print('    gender: ', gender, '    age:', age)
-
-                    # Predict emotions in the image
-                    # print("#====Detected Emotion===========#")
-                    # emlist = ed.emotionalDet(path, faceBox)
-                    emlist = ed.emotionalDet(path)
-                    emlist = emlist[0]
-                    print('    emotion: ', emlist)
-                    sample['emotion'] = emlist
-
-                    # Detect the facial attributes using mxnet
-                    # crop face area
-                    # left = faceBox[0]
-                    # width = faceBox[2] - faceBox[0]
-                    # top = faceBox[1]
-                    # height =  faceBox[3] - faceBox[1]
-                    # right = faceBox[2]
-                    # bottom = faceBox[3]
-                    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                    # pad = [0.25, 0.25, 0.25, 0.25] if args.pad is None else args.pad
-                    # left = int(max(0, left - width*float(pad[0])))
-                    # top = int(max(0, top - height*float(pad[1])))
-                    # right = int(min(gray.shape[1], right + width*float(pad[2])))
-                    # bottom = int(min(gray.shape[0], bottom + height*float(pad[3])))
-                    # gray = gray[left:right, top:bottom]
-                    # resizing image and increasing the image size
-                    gray = cv2.resize(gray, (args.size, args.size))/255.0
-                    img = np.expand_dims(np.expand_dims(gray, axis=0), axis=0)
-                    # get image parameter from mxnet
-                    arg_params['data'] = mx.nd.array(img, devs)
-                    exector = symbol.bind(devs, arg_params ,args_grad=None, grad_req="null", aux_states=aux_params)
-                    exector.forward(is_train=False)
-                    exector.outputs[0].wait_to_read()
-                    output = exector.outputs[0].asnumpy()
-                    # print('output:', output)
-                    # sys.exit(0)
-                    # 40 facial attributes
-                    text = ["5_o_Clock_Shadow","Arched_Eyebrows","Attractive","Bags_Under_Eyes","Bald", "Bangs","Big_Lips","Big_Nose",
-                            "Black_Hair","Blond_Hair","Blurry","Brown_Hair","Bushy_Eyebrows","Chubby","Double_Chin","Eyeglasses","Goatee",
-                            "Gray_Hair", "Heavy_Makeup","High_Cheekbones","Male","Mouth_Slightly_Open","Mustache","Narrow_Eyes","No_Beard",
-                            "Oval_Face","Pale_Skin","Pointy_Nose","Receding_Hairline","Rosy_Cheeks","Sideburns","Smiling","Straight_Hair",
-                            "Wavy_Hair","Wearing_Earrings","Wearing_Hat","Wearing_Lipstick","Wearing_Necklace","Wearing_Necktie","Young"]
-                    
-                    #Predict the results
-                    pred = np.ones(40)
-                    # create a list based on the attributes generated.
-                    attrDict = {}
-                    detectedAttributeList = []
-                    for i in range(40):
-                        # attr = text[i].rjust(20)
-                        attr = text[i]
-                        if output[0][i] < 0:
-                            attrDict[attr] = 'No'
-                        else:
-                            attrDict[attr] = 'Yes'
-                            detectedAttributeList.append(text[i])
-
-                    # print("#====Detected Attributes========#")
-                    sample['attrDict'] = attrDict
-                    sample['attributes'] = detectedAttributeList
-                    print('    detectedAttributeList:', detectedAttributeList)
-
-
-                    # Detect landmarks
-                    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)# convert to rgb
-                    landmarks, bboxes, scores = detect_faces(image_rgb,image_shape_max=640)
-                    # print('landmarks:', landmarks)
-                    # print('bboxes:', bboxes)
-                    # print('scores:', scores)
-                    if len(landmarks) > 0 and len(bboxes) > 0:
-                        lmarks = np.transpose(landmarks)
-                        bbs = bboxes.copy()
-                        bb, lmarks_5 = one_face(image_rgb, bbs, lmarks)
-                        image_rgb_lmk = draw_landmarks(image_rgb, bb, lmarks_5)
-                        sample['image_rgb_lmk'] = image_rgb_lmk
-
-                        roll = find_roll(lmarks_5)
-                        yaw = find_yaw(lmarks_5)
-                        pitch = find_pitch(lmarks_5)
-                        angle, Xfrontal, Yfrontal = find_pose(lmarks_5)
-                        sample['roll'] = roll
-                        sample['yaw'] = yaw
-                        sample['pitch'] = pitch
-                        sample['angle'] = angle
-                        sample['Xfrontal'] = Xfrontal
-                        sample['Yfrontal'] = Yfrontal
-                        print(f'    roll: {roll}    yaw: {yaw}    pitch: {pitch}')
-                        print(f'    angle: {angle}    Xfrontal: {Xfrontal}    Yfrontal: {Yfrontal}')
-
-                    print('    --')
-            
-                if args.save_pair_imgs:
-                    dir_save_samples = os.path.join(output_path, 'imgs_pairs_dataset_bupt')
-                    os.makedirs(dir_save_samples, exist_ok=True)
-                    pair_img_filename = 'pair_'+str(pair_idx).zfill(4)+'.png'
-                    path_save_sample = os.path.join(dir_save_samples, pair_img_filename)
-                    print(f'Saving pair at \'{path_save_sample}\'')
-                    save_samples_one_pair(pair, path_save_sample)
-
-                # print('pair:', pair)
-                end_time = time.time()
-                run_time_sec = end_time - start_time
-                est_time_sec = run_time_sec * (len(all_pairs)-pair_idx)
-                est_time_min = est_time_sec / 60
-                est_time_hour = est_time_min / 60
-                print('Elapsed time: %.2fs' % (run_time_sec))
-                print('Estimated time: %.2fs  %.2fm  %.2fh' % (est_time_sec, est_time_min, est_time_hour))
-                print('-------------------------')
-                # sys.exit(0)
-
-        path_file_attributes = os.path.join(output_path, 'attributes_dataset_bupt.pkl')
-        print(f'Saving attributes to file \'{path_file_attributes}\'')
-        save_attributes(all_pairs, path_file_attributes)
-
-    else:
-        print(f'\nLoading computed attributes: \'{args.load_attributes}\'')
-        all_pairs = load_attributes(args.load_attributes)
-        print('len(all_pairs):', len(all_pairs))
+def find_correct_wrong_predict_labels(true_labels, pred_labels):
+    assert len(true_labels) == len(pred_labels), "Lengths of true_labels and pred_labels must be the same"
+    TP_indices = []
+    TN_indices = []
+    FP_indices = []
+    FN_indices = []
     
-    # print('all_pairs[-1]:', all_pairs[-1])
-    # sys.exit(0)
+    for i in range(len(true_labels)):
+        if true_labels[i] == 1 and pred_labels[i] == 1:
+            TP_indices.append(i)
+        elif true_labels[i] == 0 and pred_labels[i] == 0:
+            TN_indices.append(i)
+        elif true_labels[i] == 0 and pred_labels[i] == 1:
+            FP_indices.append(i)
+        elif true_labels[i] == 1 and pred_labels[i] == 0:
+            FN_indices.append(i)
 
+    return TP_indices, TN_indices, FP_indices, FN_indices
+
+
+def filter_list_by_indices(pairs_list, keep_idxs):
+    keep_list = [None] * len(keep_idxs)
+    for i, keep_idx in enumerate(keep_idxs):
+        keep_list[i] = pairs_list[keep_idx]
+    return keep_list
+
+
+def count_attributes_save_charts(attrib_pairs, output_path):
+    os.makedirs(output_path, exist_ok=True)
 
     #############################
     print('Counting facial attributes')
-    race_facial_attributes_count = count_facial_attributes_by_race(all_pairs)
+    race_facial_attributes_count = count_facial_attributes_by_race(attrib_pairs)
     # print('race_facial_attributes_count:', race_facial_attributes_count)
 
     path_facial_attributes_chart_file = os.path.join(output_path, 'race_face_attributes_count.png')
@@ -555,7 +437,7 @@ def main(args):
 
 
     #############################
-    gender_age_count = count_gender_age_by_race(all_pairs)
+    gender_age_count = count_gender_age_by_race(attrib_pairs)
     # print('gender_age_count:', gender_age_count)
     path_face_gender_age_chart_file = os.path.join(output_path, f'gender_age_count.png')
     print(f'Saving chart \'{path_face_gender_age_chart_file}\'')
@@ -564,25 +446,56 @@ def main(args):
 
     #############################
     print('Counting face poses')
-    race_face_pose_count = count_face_pose_by_race(all_pairs)
+    race_face_pose_count = count_face_pose_by_race(attrib_pairs)
     # print('race_face_pose_count:', race_face_pose_count)
     # print('race_face_pose_count.keys():', race_face_pose_count.keys())
     # print('race_face_pose_count[\'African\'].keys():', race_face_pose_count['African'].keys())
     # sys.exit(0)
 
     bins, ylim = 50, (0,1)
-    # bins, ylim = 10, (0,4000)
-    # bins, ylim = 20, (0,4000)
-    # bins, ylim = 50, (0,1)
-    # bins, ylim = 50, (0,5)
-    # bins, ylim = 50, (0,2500)
-    # bins, ylim = 50, (0,4000)
-    # bins, ylim = 100, (0,5)
-    # bins, ylim = 100, (0,4000)
     path_face_pose_chart_file = os.path.join(output_path, f'race_face_pose_count_bins={bins}_ylim='+str(ylim).replace(' ','')+'.png')
     print(f'Saving chart \'{path_face_pose_chart_file}\'')
     plot_face_pose_histograms(race_face_pose_count, bins, ylim, path_face_pose_chart_file)
     
+
+
+""" Function for gender detection,age detection and """            
+def main(args):
+    output_path = os.path.join(os.path.dirname(__file__), 'results_' + args.load_scores_labels.split('/')[-2]+ '_on_dataset_bupt')
+    # os.makedirs(output_path, exist_ok=True)
+
+    print(f'\nLoading protocol pairs: \'{args.protocol}\'')
+    protocol_pairs, true_labels, race_count, subject_count, sample_count = count_verification_protocol_stats(args.protocol)
+    print('len(protocol_pairs):', len(protocol_pairs))
+    # sys.exit(0)
+
+    # all_pairs = adjust_paths(all_pairs, args.img_path, '.png')
+
+    # args.start_idx_pair = int(max(args.start_idx_pair, 0))
+    # args.start_idx_pair = int(min(args.start_idx_pair, len(all_pairs)-1))
+    # all_pairs = all_pairs[args.start_idx_pair:]
+
+    print(f'\nLoading computed attributes: \'{args.load_attributes}\'')
+    attrib_pairs = load_attributes(args.load_attributes)
+    print('len(attrib_pairs):', len(attrib_pairs))
+    # print('attrib_pairs[-1]:', attrib_pairs[-1])
+    # sys.exit(0)
+
+    print(f'\nLoading pred scores and labels: \'{args.load_attributes}\'')
+    pred_scores, pred_labels = load_predict_scores_labels(args.load_scores_labels)
+    print(f'len(pred_scores): {len(pred_scores)}    len(pred_labels): {len(pred_labels)}')
+
+    TP_indices, TN_indices, FP_indices, FN_indices = find_correct_wrong_predict_labels(true_labels, pred_labels)
+    right_idx = TP_indices + TN_indices
+    mistake_idx = FP_indices + FN_indices
+
+    rights_attrib_pairs = filter_list_by_indices(attrib_pairs, right_idx)
+    mistakes_attrib_pairs = filter_list_by_indices(attrib_pairs, mistake_idx)
+    assert len(rights_attrib_pairs)+len(mistakes_attrib_pairs) == len(attrib_pairs)
+    # attrib_pairs = mistake_attrib_pairs
+
+    count_attributes_save_charts(rights_attrib_pairs, output_path+'/rights')
+    count_attributes_save_charts(mistakes_attrib_pairs, output_path+'/mistakes')
 
     print('Finished!\n')
 
@@ -597,15 +510,16 @@ if __name__ == "__main__":
                                  help="pad (left,top,right,bottom) for face detection region")
     parser.add_argument('--model-load-prefix', dest = 'model_load_prefix', type=str, default='../model/lightened_moon/lightened_moon_fuse',
                         help='the prefix of the model to load')
-    
+
     parser.add_argument('--protocol', type=str, default='/datasets2/2nd_frcsyn_cvpr2024/comparison_files/comparison_files_2/sub-tasks_1.1_1.2_1.3/bupt_comparison.txt')
     parser.add_argument('--img-path', type=str, default='/datasets2/1st_frcsyn_wacv2024/datasets/real/3_BUPT-BalancedFace/race_per_7000_crops_112x112')
     # parser.add_argument('--detect-face', type=str, default='/datasets2/1st_frcsyn_wacv2024/datasets/real/3_BUPT-BalancedFace/race_per_7000_crops_112x112')
     parser.add_argument('--start-idx-pair', type=int, default=0, help='Min=0, Max=7999')
-    parser.add_argument('--load-attributes', type=str, default='')
+    parser.add_argument('--load-attributes', type=str, default='/home/bjgbiesseck/GitHub/BOVIFOCR_AIML-Human-Attributes-Detection-with-Facial-Feature-Extraction/results/analysis_dataset_bupt/attributes_dataset_bupt.pkl')
+    parser.add_argument('--load-scores-labels', type=str, default='/home/bjgbiesseck/GitHub/BOVIFOCR_insightface_2nd_FRCSyn_CVPR2024/work_dirs/idiffface-uniform_sdfr2024_r50/model_target=bupt_frcsyn_scores_labels_thresh=0.22.txt')
     parser.add_argument('--save-pair-imgs', action='store_true')
-    
+
     args = parser.parse_args()
-       
+
     logging.info(args)
     main(args)

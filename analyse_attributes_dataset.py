@@ -104,7 +104,7 @@ def genderAge(image, faceBox=None):
     return gender,age
 
 
-def find_images(folder_path, extensions=['.jpg', '.png']):
+def find_files(folder_path, extensions=['.jpg', '.png']):
     image_paths = []
     for root, _, files in os.walk(folder_path):
         for ext in extensions:
@@ -135,9 +135,126 @@ def load_attributes_bin(file_path):
     with open(file_path, 'rb') as file:
         return pickle.load(file)
 
-     
-def main(args):
 
+def group_attributes_by_race(facial_data):
+    grouped_data = {}
+    for i, data in enumerate(facial_data):
+        print(f'{i}/{len(facial_data)}', end='\r')
+        race = data['race']['dominant_race']
+        if race not in grouped_data:
+            grouped_data[race] = {
+                'gender': [],
+                'age': [],
+                'emotion': [],
+                'roll': [],
+                'yaw': [],
+                'pitch': [],
+                'angle': [],
+                'Xfrontal': [],
+                'Yfrontal': []
+            }
+        
+        try:
+            grouped_data[race]['gender'].append(data['gender'])
+            grouped_data[race]['age'].append(data['age'])
+            grouped_data[race]['emotion'].append(data['emotion'])
+            grouped_data[race]['roll'].append(data['roll'])
+            grouped_data[race]['yaw'].append(data['yaw'])
+            grouped_data[race]['pitch'].append(data['pitch'])
+            grouped_data[race]['angle'].append(data['angle'])
+            grouped_data[race]['Xfrontal'].append(data['Xfrontal'])
+            grouped_data[race]['Yfrontal'].append(data['Yfrontal'])
+        except KeyError:
+            continue
+
+    print('')
+
+    return grouped_data
+
+
+'''
+def save_attribute_histograms(grouped_data):
+    # attributes = ['gender', 'age', 'emotion', 'roll', 'yaw', 'pitch', 'angle', 'Xfrontal', 'Yfrontal']
+    attributes = ['gender', 'age', 'roll', 'yaw', 'pitch']
+    races = list(grouped_data.keys())
+    num_races = len(races)
+    num_attributes = len(attributes)
+
+    # size=(15, 10)
+    size=(25, 16)
+    fig, axs = plt.subplots(num_races, num_attributes, figsize=size)
+    
+    for i, race in enumerate(races):
+        for j, attribute in enumerate(attributes):
+            ax = axs[i, j] if num_races > 1 and num_attributes > 1 else axs[j] if num_races == 1 else axs[i]
+            ax.hist(grouped_data[race][attribute], bins=20, alpha=0.7)
+            ax.set_title(f'{attribute} - {race}')
+            ax.set_xlabel(attribute)
+            ax.set_ylabel('Frequency')
+
+    plt.tight_layout()
+    plt.savefig('attribute_histograms.png')
+    plt.close()
+'''
+
+
+def save_attribute_histograms(grouped_data, path_figure):
+    # races = list(grouped_data.keys())
+    races = ['black', 'asian', 'white', 'indian', 'latino hispanic', 'middle eastern']
+
+    # attributes = ['gender', 'age', 'emotion', 'roll', 'yaw', 'pitch', 'angle', 'Xfrontal', 'Yfrontal']
+    attributes = ['gender', 'age', 'roll', 'yaw', 'pitch']
+
+    possible_values = {}
+    possible_values['gender'] = ['Male', 'Female']
+    possible_values['age'] = ['(0-2)', '(4-6)', '(8-12)', '(15-20)', '(25-32)', '(38-43)', '(48-53)', '(60-100)']
+    possible_values['emotion'] = ['happy', 'neutral', 'surprise', 'angry', 'fear', 'sad', 'disgust']
+
+    num_races = len(races)
+    num_attributes = len(attributes)
+
+    fig, axs = plt.subplots(num_races, num_attributes, figsize=(22, 19))
+
+    for i, race in enumerate(races):
+        for j, attribute in enumerate(attributes):
+            print(f'Mounting figure with all histograms - race={race}({i}/{len(races)}) - attrib={attribute}({j}/{len(attributes)})', end='\r')
+            ax = axs[i, j] if num_races > 1 and num_attributes > 1 else axs[j] if num_races == 1 else axs[i]
+            data = grouped_data[race][attribute]
+            counts = data
+            # if attribute in ['gender', 'age', 'emotion']:
+            if attribute in list(possible_values.keys()):
+                counts = {poss_value:0 for poss_value in possible_values[attribute]}
+                for value in data:
+                    counts[value] += 1
+                counts = [counts[key] for key in counts.keys()]
+                x = np.arange(len(possible_values[attribute]))
+                ax.bar(x, counts)
+                ax.set_xticks(x)
+                ax.set_xticklabels(possible_values[attribute], rotation=45, ha='right')
+            else:
+                ax.hist(counts, bins=50, density=True, alpha=0.7)
+                if attribute in ['roll', 'yaw']:
+                    ax.set_xlim(left=-40, right=40)
+                    if attribute in ['roll']:
+                        ax.set_ylim(bottom=0, top=0.5)
+                    if attribute in ['yaw']:
+                        ax.set_ylim(bottom=0, top=0.1)
+                elif attribute in ['pitch']:
+                    ax.set_xlim(left=0, right=10)
+                    ax.set_ylim(bottom=0, top=1)
+            ax.set_title(f'{attribute} - {race}')
+            ax.set_xlabel(attribute)
+            ax.set_ylabel('Proportion')
+    print('')
+
+    plt.tight_layout()
+    # path_figure = 'attribute_histograms.png'
+    print(f'Saving figure \'{path_figure}\'')
+    plt.savefig(path_figure)
+    plt.close()
+
+
+def extract_facial_attributes(args):
     symbol = lightened_moon_feature(num_classes=40, use_fuse=True)
     devs = mx.cpu() if args.gpus is None else [mx.gpu(int(i)) for i in args.gpus.split(',')]
     _, arg_params, aux_params = mx.model.load_checkpoint('model/lightened_moon/lightened_moon_fuse', 82)
@@ -148,10 +265,10 @@ def main(args):
 
     print(f'\nSearching images in \'{args.input}\'')
     types = ('.jpg', '.png')
-    image_path_list = find_images(args.input, types)
+    image_path_list = find_files(args.input, types)
     if len(image_path_list) == 0:
         raise Exception('No input images found in \''+ args.input +'\'')
-    print(f'Found {len(image_path_list)}')
+    print(f'Found {len(image_path_list)} images')
     
     start_idx = 0
     end_idx = len(image_path_list)
@@ -275,7 +392,7 @@ def main(args):
             print(f'    angle: {angle}    Xfrontal: {Xfrontal}    Yfrontal: {Yfrontal}')
 
 
-        # ESTIMATE RACE ('asian', 'indian', 'black', 'white', 'middle eastern', 'latino hispanic')
+        # ESTIMATE RACE, POSSIBLE VALUES=('asian', 'indian', 'black', 'white', 'middle eastern', 'latino hispanic')
         # objs = DeepFace.analyze(img_path=image_bgr, actions=['age', 'gender', 'race', 'emotion'], enforce_detection=False)
         race = DeepFace.analyze(img_path=image, actions=['race'], enforce_detection=False)
         race = race[0]
@@ -309,6 +426,47 @@ def main(args):
         print('    Estimated time: %.2fsec, %.2fmin, %.2fhour, %.2fdays' % (est_time_sec, est_time_min, est_time_hour, est_time_days))
         print('----------------')
         # sys.exit(0)
+
+
+def summarize_results(args):
+    args.input = args.input.rstrip('/').rstrip(' ')
+    if args.output == '':
+        args.output = args.input + '_FACE_ATTRIB_SUMMARY'
+
+    print(f'\nSearching attributes files in \'{args.input}\'')
+    types = ('.pkl')
+    attrib_path_list = find_files(args.input, types)
+    if len(attrib_path_list) == 0:
+        raise Exception('No input attributes files found in \''+ args.input +'\'')
+    print(f'Found {len(attrib_path_list)} attributes files')
+
+    all_attribs_list = [None] * len(attrib_path_list)
+    for i, attrib_path in enumerate(attrib_path_list):
+        print(f'Loading attributes files - {i}/{len(attrib_path_list)} - \'{attrib_path}\'', end='\r')
+        all_attribs_list[i] = load_attributes_bin(attrib_path)
+        # print(all_attribs_list[i]); sys.exit(0)
+    print('')
+
+    print(f'Counting facial attributes')
+    grouped_data = group_attributes_by_race(all_attribs_list)
+    # for k, key in enumerate(grouped_data.keys()):
+    #     print(f'grouped_data[\'{key}\'].keys():', grouped_data[key].keys())
+    # sys.exit(0)
+
+    dataset_name = '_'.join(args.output.split('/')[-2:])
+    path_figure = 'attribute_histograms_'+dataset_name+'.png'
+    save_attribute_histograms(grouped_data, path_figure)
+
+
+
+
+def main(args):
+
+    # Extract facial attributes
+    if not args.summarize_results:
+        extract_facial_attributes(args)
+    else:
+        summarize_results(args)
     
     print('Finished!\n')
 
@@ -330,6 +488,8 @@ if __name__ == "__main__":
     parser.add_argument('--save-text', action='store_true')
     parser.add_argument('--dont-save-bin', action='store_true')
     parser.add_argument('--start-string', default='', type=str, help='String to find out in image paths and start processing')
+
+    parser.add_argument('--summarize-results', action='store_true')
         
     args = parser.parse_args()
        
