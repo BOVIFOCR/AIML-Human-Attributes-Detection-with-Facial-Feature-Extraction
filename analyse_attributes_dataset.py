@@ -137,12 +137,12 @@ def load_attributes_bin(file_path):
 
 
 def group_attributes_by_race(facial_data):
-    grouped_data = {}
+    grouped_attribs = {}
     for i, data in enumerate(facial_data):
         print(f'{i}/{len(facial_data)}', end='\r')
         race = data['race']['dominant_race']
-        if race not in grouped_data:
-            grouped_data[race] = {
+        if race not in grouped_attribs:
+            grouped_attribs[race] = {
                 'gender': [],
                 'age': [],
                 'emotion': [],
@@ -155,21 +155,21 @@ def group_attributes_by_race(facial_data):
             }
         
         try:
-            grouped_data[race]['gender'].append(data['gender'])
-            grouped_data[race]['age'].append(data['age'])
-            grouped_data[race]['emotion'].append(data['emotion'])
-            grouped_data[race]['roll'].append(data['roll'])
-            grouped_data[race]['yaw'].append(data['yaw'])
-            grouped_data[race]['pitch'].append(data['pitch'])
-            grouped_data[race]['angle'].append(data['angle'])
-            grouped_data[race]['Xfrontal'].append(data['Xfrontal'])
-            grouped_data[race]['Yfrontal'].append(data['Yfrontal'])
+            grouped_attribs[race]['gender'].append(data['gender'])
+            grouped_attribs[race]['age'].append(data['age'])
+            grouped_attribs[race]['emotion'].append(data['emotion'])
+            grouped_attribs[race]['roll'].append(data['roll'])
+            grouped_attribs[race]['yaw'].append(data['yaw'])
+            grouped_attribs[race]['pitch'].append(data['pitch'])
+            grouped_attribs[race]['angle'].append(data['angle'])
+            grouped_attribs[race]['Xfrontal'].append(data['Xfrontal'])
+            grouped_attribs[race]['Yfrontal'].append(data['Yfrontal'])
         except KeyError:
             continue
 
     print('')
 
-    return grouped_data
+    return grouped_attribs
 
 
 '''
@@ -431,7 +431,8 @@ def extract_facial_attributes(args):
 def summarize_results(args):
     args.input = args.input.rstrip('/').rstrip(' ')
     if args.output == '':
-        args.output = args.input + '_FACE_ATTRIB_SUMMARY'
+        args.output = 'results'
+    os.makedirs(args.output, exist_ok=True)
 
     print(f'\nSearching attributes files in \'{args.input}\'')
     types = ('.pkl')
@@ -448,14 +449,17 @@ def summarize_results(args):
     print('')
 
     print(f'Counting facial attributes')
-    grouped_data = group_attributes_by_race(all_attribs_list)
+    grouped_attribs = group_attributes_by_race(all_attribs_list)
     # for k, key in enumerate(grouped_data.keys()):
     #     print(f'grouped_data[\'{key}\'].keys():', grouped_data[key].keys())
     # sys.exit(0)
 
-    dataset_name = '_'.join(args.output.split('/')[-2:])
-    path_figure = 'attribute_histograms_'+dataset_name+'.png'
-    save_attribute_histograms(grouped_data, path_figure)
+    dataset_name = '_'.join(args.input.split('/')[-2:])
+    dataset_dir_results = args.output + '/' + dataset_name
+    os.makedirs(dataset_dir_results, exist_ok=True)
+    file_figure = 'attribute_histograms_'+dataset_name+'.png'
+    path_figure = os.path.join(dataset_dir_results, file_figure)
+    save_attribute_histograms(grouped_attribs, path_figure)
 
 
 
