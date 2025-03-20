@@ -108,7 +108,7 @@ def find_files(folder_path, extensions=['.jpg', '.png']):
     image_paths = []
     for root, _, files in os.walk(folder_path):
         for ext in extensions:
-            pattern = os.path.join(root, '*' + ext)
+            pattern = os.path.join(glob.escape(root), '*' + ext)
             matching_files = glob.glob(pattern)
             image_paths.extend(matching_files)
     return sorted(image_paths)
