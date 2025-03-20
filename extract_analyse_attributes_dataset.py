@@ -138,6 +138,21 @@ def load_attributes_bin(file_path):
 
 def group_attributes_by_race(facial_data):
     grouped_attribs = {}
+    
+    races = ['black', 'asian', 'white', 'indian', 'latino hispanic', 'middle eastern']
+    for race in races:
+        grouped_attribs[race] = {
+            'gender': [],
+            'age': [],
+            'emotion': [],
+            'roll': [],
+            'yaw': [],
+            'pitch': [],
+            'angle': [],
+            'Xfrontal': [],
+            'Yfrontal': []
+        }
+
     for i, data in enumerate(facial_data):
         print(f'{i}/{len(facial_data)}', end='\r')
         race = data['race']['dominant_race']
