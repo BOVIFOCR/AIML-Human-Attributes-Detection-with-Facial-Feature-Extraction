@@ -279,7 +279,7 @@ def extract_facial_attributes(args):
         args.output = args.input + '_FACE_ATTRIB'
 
     print(f'\nSearching images in \'{args.input}\'')
-    types = ('.jpg', '.png')
+    types = ['.jpg', '.png']
     image_path_list = find_files(args.input, types)
     if len(image_path_list) == 0:
         raise Exception('No input images found in \''+ args.input +'\'')
@@ -450,7 +450,7 @@ def summarize_results(args):
     os.makedirs(args.output, exist_ok=True)
 
     print(f'\nSearching attributes files in \'{args.input}\'')
-    types = ('.pkl')
+    types = ['.pkl']
     attrib_path_list = find_files(args.input, types)
     if len(attrib_path_list) == 0:
         raise Exception('No input attributes files found in \''+ args.input +'\'')
