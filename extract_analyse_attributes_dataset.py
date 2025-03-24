@@ -225,12 +225,20 @@ def save_attribute_histograms(grouped_data, path_figure):
     possible_values['age'] = ['(0-2)', '(4-6)', '(8-12)', '(15-20)', '(25-32)', '(38-43)', '(48-53)', '(60-100)']
     possible_values['emotion'] = ['happy', 'neutral', 'surprise', 'angry', 'fear', 'sad', 'disgust']
 
+    if not 'total_races' in races:
+        grouped_data['total_races'] = {attrib: [] for attrib in grouped_data[list(grouped_data.keys())[0]].keys()}
+        for i, race in enumerate(races):
+            for j, attribute in enumerate(list(grouped_data['total_races'].keys())):
+                grouped_data['total_races'][attribute].extend(grouped_data[race][attribute])
+
     num_races = len(races)
     num_attributes = len(attributes)
 
-    fig, axs = plt.subplots(num_races, num_attributes, figsize=(22, 19))
+    # fig, axs = plt.subplots(num_races, num_attributes, figsize=(22, 19))
+    fig, axs = plt.subplots(len(list(grouped_data.keys())), num_attributes, figsize=(22, 19))
 
-    for i, race in enumerate(races):
+    # for i, race in enumerate(races):
+    for i, race in enumerate(list(grouped_data.keys())):
         for j, attribute in enumerate(attributes):
             print(f'Mounting figure with all histograms - race={race}({i}/{len(races)}) - attrib={attribute}({j}/{len(attributes)})', end='\r')
             ax = axs[i, j] if num_races > 1 and num_attributes > 1 else axs[j] if num_races == 1 else axs[i]
