@@ -187,30 +187,28 @@ def group_attributes_by_race(facial_data):
     return grouped_attribs
 
 
-'''
-def save_attribute_histograms(grouped_data):
-    # attributes = ['gender', 'age', 'emotion', 'roll', 'yaw', 'pitch', 'angle', 'Xfrontal', 'Yfrontal']
-    attributes = ['gender', 'age', 'roll', 'yaw', 'pitch']
-    races = list(grouped_data.keys())
-    num_races = len(races)
-    num_attributes = len(attributes)
+def save_races_count_bar_chart(grouped_data, output_path):
+    race_list = ['black', 'asian', 'white', 'indian', 'latino hispanic', 'middle eastern']
 
-    # size=(15, 10)
-    size=(25, 16)
-    fig, axs = plt.subplots(num_races, num_attributes, figsize=size)
+    counts = [0] * len(race_list)
+    for i, race in enumerate(race_list):
+        counts[i] += len(grouped_data[race]['gender'])
+
+    title = 'Races Count'
+
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.bar(race_list, counts)
+    ax.set_xlabel('Race')
+    ax.set_ylabel('Number of Samples')
+    ax.set_title(title)
+
+    ax.set_xticks(range(len(race_list)))
+    ax.set_xticklabels(race_list, rotation=45, ha='right')
     
-    for i, race in enumerate(races):
-        for j, attribute in enumerate(attributes):
-            ax = axs[i, j] if num_races > 1 and num_attributes > 1 else axs[j] if num_races == 1 else axs[i]
-            ax.hist(grouped_data[race][attribute], bins=20, alpha=0.7)
-            ax.set_title(f'{attribute} - {race}')
-            ax.set_xlabel(attribute)
-            ax.set_ylabel('Frequency')
-
     plt.tight_layout()
-    plt.savefig('attribute_histograms.png')
-    plt.close()
-'''
+    
+    plt.savefig(output_path, format='png')
+    plt.close(fig)
 
 
 def save_attribute_histograms(grouped_data, path_figure):
@@ -240,7 +238,7 @@ def save_attribute_histograms(grouped_data, path_figure):
     # for i, race in enumerate(races):
     for i, race in enumerate(list(grouped_data.keys())):
         for j, attribute in enumerate(attributes):
-            print(f'Mounting figure with all histograms - race={race}({i}/{len(races)}) - attrib={attribute}({j}/{len(attributes)})', end='\r')
+            print(f'Mounting figure with all histograms - race={race}({i}/{len(races)}) - attrib={attribute}({j}/{len(attributes)})                     ', end='\r')
             ax = axs[i, j] if num_races > 1 and num_attributes > 1 else axs[j] if num_races == 1 else axs[i]
             data = grouped_data[race][attribute]
             counts = data
@@ -480,6 +478,11 @@ def summarize_results(args):
     dataset_name = '_'.join(args.input.split('/')[-2:])
     dataset_dir_results = args.output + '/' + dataset_name
     os.makedirs(dataset_dir_results, exist_ok=True)
+
+    file_figure = 'races_counts_'+dataset_name+'.png'
+    path_figure = os.path.join(dataset_dir_results, file_figure)
+    save_races_count_bar_chart(grouped_attribs, path_figure)
+
     file_figure = 'attribute_histograms_'+dataset_name+'.png'
     path_figure = os.path.join(dataset_dir_results, file_figure)
     save_attribute_histograms(grouped_attribs, path_figure)
