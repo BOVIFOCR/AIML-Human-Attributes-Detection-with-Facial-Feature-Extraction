@@ -111,6 +111,8 @@ def find_files(folder_path, extensions=['.jpg', '.png']):
             pattern = os.path.join(glob.escape(root), '*' + ext)
             matching_files = glob.glob(pattern)
             image_paths.extend(matching_files)
+            print(len(image_paths), end='\r')
+    print()
     return sorted(image_paths)
 
 
