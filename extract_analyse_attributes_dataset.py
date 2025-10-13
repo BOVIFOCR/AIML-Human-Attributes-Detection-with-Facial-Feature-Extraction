@@ -454,7 +454,8 @@ def extract_facial_attributes(args):
 def summarize_results(args):
     args.input = args.input.rstrip('/').rstrip(' ')
     if args.output == '':
-        args.output = 'results'
+        # args.output = 'results'
+        args.output = f'{args.input}_SUMMARY'
     os.makedirs(args.output, exist_ok=True)
 
     print(f'\nSearching attributes files in \'{args.input}\'')
@@ -478,7 +479,8 @@ def summarize_results(args):
     # sys.exit(0)
 
     dataset_name = '_'.join(args.input.split('/')[-2:])
-    dataset_dir_results = args.output + '/' + dataset_name
+    # dataset_dir_results = args.output + '/' + dataset_name
+    dataset_dir_results = args.output
     os.makedirs(dataset_dir_results, exist_ok=True)
 
     file_figure = 'races_counts_'+dataset_name+'.png'
