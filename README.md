@@ -39,6 +39,8 @@ ENV=AIML-Human-Attributes-Detection-with-Facial-Feature-Extraction
 conda create -y --name $ENV python=3.6
 conda activate $ENV
 pip3 install -r requirements.txt
+
+conda install -c conda-forge cudnn=8.1   # if you get the tensorflow error: "E tensorflow/stream_executor/cuda/cuda_dnn.cc:362] Loaded runtime CuDNN library: 8.0.5 but source was compiled with: 8.1.0"
 ```
 
 Prerequisites for running the code are:
